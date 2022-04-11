@@ -1,5 +1,7 @@
 # CS6475 Final Project - Spring 2016
 # Chris Gearhart
+#---------------------------------------
+# Modified by Hian-Kun Tenn [2022-04-11]
 
 import argparse
 import logging
@@ -11,7 +13,8 @@ from collections import OrderedDict
 import cv2
 import numpy as np
 
-from gco_python.pygco import cut_simple
+#from gco_python.pygco import cut_simple
+from pygco import cut_simple
 from skimage.morphology import disk
 from scipy import optimize
 
@@ -70,7 +73,8 @@ def align(image_stack):
     # only using the northwest and southeast corners can lead to
     # errors if the other two corners form a smaller bounding box
     (r, c) = image_stack[0].shape[:2]
-    corners = np.array([[0., c], [0., r], [1., 1.]], dtype=np.float)
+    #corners = np.array([[0., c], [0., r], [1., 1.]], dtype=np.float)
+    corners = np.array([[0., c], [0., r], [1., 1.]], dtype=float)
     nw_corner, se_corner = corners[:, 0], corners[:, 1]
 
     transform = np.eye(3)
@@ -81,9 +85,14 @@ def align(image_stack):
     # image frame
     for anchor, img in zip(image_stack[:-1], image_stack[1:]):
 
-        new_t = cv2.estimateRigidTransform(img, anchor, fullAffine=False)
-        transform[:2, :2] = new_t[:2, :2].dot(transform[:2, :2])
-        transform[:2, 2] = new_t[:, 2] + transform[:2, 2]
+        # note: the estimateRigidTransform() function has been deprecated.
+        #new_t = cv2.estimateRigidTransform(img, anchor, fullAffine=False)
+        # note: Assuming all the images are perfectly aligned and bypass the affine transforms.
+        #      It seems that estimateAffinePartial2D() need point sets not images,
+        #      and I don't have time to calculate them...
+        ##new_t, _ = cv2.estimateAffinePartial2D(img, anchor) # this won't work
+        ##transform[:2, :2] = new_t[:2, :2].dot(transform[:2, :2])
+        ##transform[:2, 2] = new_t[:, 2] + transform[:2, 2]
         new_im = cv2.warpAffine(img, transform[:2, :], (c, r))
         _stack.append(new_im)
 
@@ -93,8 +102,9 @@ def align(image_stack):
 
         log.debug("Transformation matrix:\n" + str(transform))
 
-    lx, ly = nw_corner[:2]
-    rx, ry = se_corner[:2]
+    # note: convert to int
+    lx, ly = map(int, nw_corner[:2])
+    rx, ry = map(int, se_corner[:2])
 
     _stack = [img[ly:ry, lx:rx] for img in _stack]
 
